@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from patchstack.config import Config
 from patchstack.logger import StructuredLogger
 from patchstack.scanner.http_client import HTTPClient
