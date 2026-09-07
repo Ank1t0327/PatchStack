@@ -1,0 +1,25 @@
+# PatchStack Security Assessment Engine Configuration
+
+scanner:
+  target_url: "http://127.0.0.1:5000"
+  timeout: 10
+  user_agent: "PatchStack-Security-Scanner/1.0"
+  follow_redirects: true
+  max_retries: 3
+  threads: 4
+
+logging:
+  level: "INFO"
+  format: "console"  # options: console, json
+  file_path: "patchstack_scan.log"
+  verbose: false
+
+detectors:
+  enabled:
+    - security_headers
+    - info_disclosure
+    - cors_misconfig
+
+reports:
+  output_dir: "reports/output"
+  default_format: "json"
