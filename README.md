@@ -21,7 +21,8 @@
                                     │
                               HTTP Analysis
                                     │
-                            Detection Engine
+                  Security Vulnerability Detectors (Day 3)
+         (Headers, Cookies, Info Disclosure, Methods, CORS)
                                     │
                          Vulnerability Findings
                                     │
@@ -38,8 +39,13 @@ patchstack/
 │   ├── cli.py               # CLI Entry Point & Report Visualizer
 │   ├── config.py            # ConfigManager & Dataclasses
 │   ├── logger.py            # Structured Logger with Console/File handlers
-│   ├── detectors/           # Security Detectors Framework
-│   │   └── base.py          # BaseDetector interface & HeaderDetector
+│   ├── detectors/           # Security Detectors Framework (Day 3)
+│   │   ├── base.py          # BaseDetector interface & Finding models
+│   │   ├── cookies.py       # CookieSecurityDetector (HttpOnly, Secure, SameSite)
+│   │   ├── cors.py          # CORSConfigDetector (Origin reflection & credentials)
+│   │   ├── headers.py       # SecurityHeadersDetector (CSP, HSTS, X-Frame-Options)
+│   │   ├── info_disclosure.py # ServerInfoDisclosureDetector (Version leakage)
+│   │   └── methods.py       # DangerousMethodsDetector (TRACE, OPTIONS, PUT, DELETE)
 │   ├── recon/               # HTTP Reconnaissance Engine (Day 2)
 │   │   ├── crawler.py       # Domain-scoped recursive WebCrawler
 │   │   ├── engine.py        # ReconEngine orchestrator
@@ -52,7 +58,7 @@ patchstack/
 │   │   ├── engine.py        # ScannerEngine orchestrator & risk calculator
 │   │   └── http_client.py   # Telemetry-enabled HTTP client wrapper
 │   └── target_app/          # Controlled Intentionally Vulnerable Web App
-│       ├── app.py           # Flask app factory with enriched HTML routes & forms
+│       ├── app.py           # Flask app factory with enriched HTML routes & test harnesses
 │       └── __main__.py      # Independent launcher
 ├── tests/                   # Pytest automated test suite
 ├── setup.py                 # Package setup file
@@ -62,14 +68,13 @@ patchstack/
 
 ---
 
-## ✨ Features
+## ✨ Security Detectors (Day 3)
 
-- **HTTP Reconnaissance Engine (Day 2)**: Domain-scoped recursive spidering, link extraction, form/parameter mapping, cookie auditing, and technology stack fingerprinting (Flask, Werkzeug, FastAPI, Node, etc.).
-- **Independent Dual Architecture**: The target web application (`target_app`) and the security scanner (`scanner`) operate as decoupled, independent systems.
-- **Telemetry-Driven HTTP Engine**: Full response tracking (headers, status code, latency in ms, cookie telemetry).
-- **Extensible Detector Plugin Model**: Abstract `BaseDetector` interface allowing clean addition of dynamic/static rule sets.
-- **CVSS-Based Risk Scoring**: Aggregates finding severity and generates a cumulative risk score for the audit target.
-- **Config & Logging Subsystems**: YAML configuration with environment variable overrides (`PATCHSTACK_TARGET`, `PATCHSTACK_TIMEOUT`, etc.) and structured log outputs.
+- **Security Headers Auditor**: Detects missing `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security` (HSTS), `Referrer-Policy`, and `Permissions-Policy`.
+- **Cookie Security Auditor**: Analyzes `Set-Cookie` headers for missing `HttpOnly`, missing `Secure`, and weak/missing `SameSite` flags.
+- **Server Information Disclosure**: Identifies version leakage in `Server`, `X-Powered-By`, `X-AspNet-Version`, and runtime headers.
+- **Dangerous HTTP Methods**: Checks for enabled `TRACE` (Cross-Site Tracing), `PUT`, `DELETE`, and `OPTIONS` method exposures.
+- **CORS Misconfiguration Auditor**: Tests for arbitrary Origin reflection and wildcard origin permissions paired with `Access-Control-Allow-Credentials: true`.
 
 ---
 
@@ -95,25 +100,22 @@ Launch the controlled vulnerable web server in a separate terminal:
 python -m patchstack.target_app --port 5000
 ```
 
-### 3. Run the Security Scanner & Reconnaissance Engine
+### 3. Run the Security Scanner & Audit Suite
 
 Execute the scanner CLI against the target application:
 
 ```bash
-# Basic scan & reconnaissance against local target
+# Basic scan & security assessment against target
 python -m patchstack.cli --target http://127.0.0.1:5000
 
 # Sample CLI Output:
-# [+] Target: http://127.0.0.1:5000
-#
-# [+] Endpoints discovered: 10
-# [+] Forms discovered: 4
-# [+] Cookies: 2
-# [+] Server: Flask/3.0.0 (Werkzeug/3.0.1 Python/3.10)
-# [+] Framework: Flask
-# [+] Technologies: Flask, Python, Jinja2 Templates
+# Finding: Missing Content-Security-Policy
+# Severity: Medium
+# Endpoint: http://127.0.0.1:5000
+# Evidence: Header not present
+# Recommendation: Configure an appropriate Content-Security-Policy header (e.g., default-src 'self').
 
-# JSON output export
+# JSON report export
 python -m patchstack.cli --target http://127.0.0.1:5000 --json
 ```
 
@@ -133,7 +135,7 @@ pytest -v
 
 - [x] **Day 1**: Repository foundation, architecture design, target application skeleton, scanner core, logging & config system.
 - [x] **Day 2**: HTTP Reconnaissance engine (web crawler, form parser, cookie tracking, technology stack fingerprinter).
-- [ ] **Day 3**: Security header & SSL/TLS misconfiguration detectors.
+- [x] **Day 3**: Security headers, cookie security, server info disclosure, dangerous methods, and CORS detectors.
 - [ ] **Day 4**: Authentication & session security analysis.
 - [ ] **Day 5**: Input validation & injection vulnerability checks (SQLi / XSS heuristics).
 - [ ] **Day 6**: Access control & IDOR detection modules.
