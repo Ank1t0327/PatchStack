@@ -16,6 +16,9 @@
            │                                                 │
            └────────────────────────┬────────────────────────┘
                                     │
+                         HTTP Reconnaissance Engine
+                       (Crawler, Parser, Fingerprinter)
+                                    │
                               HTTP Analysis
                                     │
                             Detection Engine
@@ -37,13 +40,19 @@ patchstack/
 │   ├── logger.py            # Structured Logger with Console/File handlers
 │   ├── detectors/           # Security Detectors Framework
 │   │   └── base.py          # BaseDetector interface & HeaderDetector
+│   ├── recon/               # HTTP Reconnaissance Engine (Day 2)
+│   │   ├── crawler.py       # Domain-scoped recursive WebCrawler
+│   │   ├── engine.py        # ReconEngine orchestrator
+│   │   ├── fingerprint.py   # TechnologyFingerprinter (Server, Framework, Stack)
+│   │   ├── models.py        # DiscoveredEndpoint, Form, Cookie & Fingerprint models
+│   │   └── parser.py        # HTMLReconParser for links, forms, scripts, meta tags
 │   ├── reports/             # Report Generation Engine
 │   │   └── base.py          # JSON / HTML report exporters
 │   ├── scanner/             # Core Scanning Engine
 │   │   ├── engine.py        # ScannerEngine orchestrator & risk calculator
 │   │   └── http_client.py   # Telemetry-enabled HTTP client wrapper
 │   └── target_app/          # Controlled Intentionally Vulnerable Web App
-│       ├── app.py           # Flask app factory with security test routes
+│       ├── app.py           # Flask app factory with enriched HTML routes & forms
 │       └── __main__.py      # Independent launcher
 ├── tests/                   # Pytest automated test suite
 ├── setup.py                 # Package setup file
@@ -53,8 +62,9 @@ patchstack/
 
 ---
 
-## ✨ Features (Day 1 Foundation)
+## ✨ Features
 
+- **HTTP Reconnaissance Engine (Day 2)**: Domain-scoped recursive spidering, link extraction, form/parameter mapping, cookie auditing, and technology stack fingerprinting (Flask, Werkzeug, FastAPI, Node, etc.).
 - **Independent Dual Architecture**: The target web application (`target_app`) and the security scanner (`scanner`) operate as decoupled, independent systems.
 - **Telemetry-Driven HTTP Engine**: Full response tracking (headers, status code, latency in ms, cookie telemetry).
 - **Extensible Detector Plugin Model**: Abstract `BaseDetector` interface allowing clean addition of dynamic/static rule sets.
@@ -85,13 +95,23 @@ Launch the controlled vulnerable web server in a separate terminal:
 python -m patchstack.target_app --port 5000
 ```
 
-### 3. Run the Security Scanner
+### 3. Run the Security Scanner & Reconnaissance Engine
 
 Execute the scanner CLI against the target application:
 
 ```bash
-# Basic scan against local target
+# Basic scan & reconnaissance against local target
 python -m patchstack.cli --target http://127.0.0.1:5000
+
+# Sample CLI Output:
+# [+] Target: http://127.0.0.1:5000
+#
+# [+] Endpoints discovered: 10
+# [+] Forms discovered: 4
+# [+] Cookies: 2
+# [+] Server: Flask/3.0.0 (Werkzeug/3.0.1 Python/3.10)
+# [+] Framework: Flask
+# [+] Technologies: Flask, Python, Jinja2 Templates
 
 # JSON output export
 python -m patchstack.cli --target http://127.0.0.1:5000 --json
@@ -112,7 +132,7 @@ pytest -v
 ## 📅 10-Day Development Roadmap
 
 - [x] **Day 1**: Repository foundation, architecture design, target application skeleton, scanner core, logging & config system.
-- [ ] **Day 2**: Passive reconnaissance & crawling engine.
+- [x] **Day 2**: HTTP Reconnaissance engine (web crawler, form parser, cookie tracking, technology stack fingerprinter).
 - [ ] **Day 3**: Security header & SSL/TLS misconfiguration detectors.
 - [ ] **Day 4**: Authentication & session security analysis.
 - [ ] **Day 5**: Input validation & injection vulnerability checks (SQLi / XSS heuristics).

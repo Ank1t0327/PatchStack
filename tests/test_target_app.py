@@ -13,9 +13,8 @@ def client():
 def test_index_route(client):
     rv = client.get("/")
     assert rv.status_code == 200
-    json_data = rv.get_json()
-    assert json_data["status"] == "running"
-    assert "PatchStack" in json_data["name"]
+    html_data = rv.get_data(as_text=True)
+    assert "PatchStack Target App" in html_data
 
 
 def test_health_route(client):
