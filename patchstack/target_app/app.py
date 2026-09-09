@@ -3,7 +3,7 @@ from flask import Flask, jsonify, make_response, request, render_template_string
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.config["SECRET_KEY"] = "dev-vulnerable-key-patchstack-day2"
+    app.config["SECRET_KEY"] = "dev-vulnerable-key-patchstack-day3"
 
     HOME_HTML = """
     <!url html>
@@ -22,7 +22,10 @@ def create_app() -> Flask:
             <a href="/profile">Profile</a> |
             <a href="/admin">Admin Panel</a> |
             <a href="/api/v1/info">API Info</a> |
-            <a href="/api/v1/users">API Users</a>
+            <a href="/api/v1/users">API Users</a> |
+            <a href="/api/v1/insecure-cookie">Insecure Cookie Test</a> |
+            <a href="/api/v1/info-leak">Info Leak Test</a> |
+            <a href="/api/v1/cors-vulnerable">CORS Vulnerable Test</a>
         </nav>
         <p>Welcome to the controlled web application testbed for PatchStack reconnaissance & vulnerability assessment.</p>
     </body>
@@ -107,7 +110,7 @@ def create_app() -> Flask:
     """
 
     def _set_headers(resp):
-        resp.headers["Server"] = "Flask/3.0.0 (Werkzeug/3.0.1 Python/3.10)"
+        resp.headers["Server"] = "Flask/3.0.0 (Werkzeug/3.0.1 Python/3.10 Ubuntu)"
         resp.headers["X-Powered-By"] = "PatchStack-TargetApp/1.0"
         return resp
 
@@ -173,6 +176,45 @@ def create_app() -> Flask:
     @app.route("/api/v1/headers-test", methods=["GET"])
     def headers_test():
         resp = make_response(jsonify({"message": "Header analysis endpoint"}))
+        origin = request.headers.get("Origin")
+        if origin:
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+        return _set_headers(resp)
+
+    # --- Day 3 Test Harness Routes ---
+
+    @app.route("/api/v1/insecure-cookie", methods=["GET"])
+    def insecure_cookie_test():
+        resp = make_response(jsonify({"status": "cookie_set"}))
+        # Intentionally insecure cookie: no HttpOnly, no Secure, no SameSite
+        resp.set_cookie("auth_token", "secret12345", httponly=False, secure=False)
+        return _set_headers(resp)
+
+    @app.route("/api/v1/info-leak", methods=["GET"])
+    def info_leak_test():
+        resp = make_response(jsonify({"status": "info_leak"}))
+        resp.headers["Server"] = "Apache/2.4.41 (Ubuntu) OpenSSL/1.1.1f PHP/7.4.3"
+        resp.headers["X-Powered-By"] = "PHP/7.4.3"
+        resp.headers["X-AspNet-Version"] = "4.0.30319"
+        return resp
+
+    @app.route("/api/v1/debug-methods", methods=["GET", "POST", "OPTIONS", "TRACE", "PUT", "DELETE"])
+    def debug_methods_test():
+        if request.method == "OPTIONS":
+            resp = make_response("", 200)
+            resp.headers["Allow"] = "GET, POST, OPTIONS, TRACE, PUT, DELETE"
+            return resp
+        if request.method == "TRACE":
+            resp = make_response("TRACE /api/v1/debug-methods HTTP/1.1", 200)
+            resp.headers["Content-Type"] = "message/http"
+            return resp
+        resp = make_response(jsonify({"method": request.method}))
+        return _set_headers(resp)
+
+    @app.route("/api/v1/cors-vulnerable", methods=["GET", "OPTIONS"])
+    def cors_vulnerable_test():
+        resp = make_response(jsonify({"status": "cors_test"}))
         origin = request.headers.get("Origin")
         if origin:
             resp.headers["Access-Control-Allow-Origin"] = origin

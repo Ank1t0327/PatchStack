@@ -36,4 +36,4 @@ def test_scanner_headers_detection(monkeypatch):
 
     assert result.total_findings > 0
     missing_ids = [f.id for f in result.findings]
-    assert "MISSING_HEADER_CONTENT_SECURITY_POLICY" in missing_ids
+    assert "MISSING_CONTENT_SECURITY_POLICY" in missing_ids
