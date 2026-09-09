@@ -4,6 +4,8 @@ from patchstack.config import Config
 from patchstack.logger import StructuredLogger
 from patchstack.scanner.http_client import HTTPClient
 from patchstack.detectors.base import BaseDetector, Finding, SecurityHeadersDetector
+from patchstack.recon.engine import ReconEngine
+from patchstack.recon.models import ReconResult
 
 
 @dataclass
@@ -13,33 +15,38 @@ class ScanResult:
     findings: List[Finding]
     risk_score: float
     scan_duration_ms: float
+    recon: Optional[ReconResult] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        data = {
             "target_url": self.target_url,
             "total_findings": self.total_findings,
             "risk_score": round(self.risk_score, 2),
             "scan_duration_ms": round(self.scan_duration_ms, 2),
             "findings": [f.to_dict() for f in self.findings],
         }
+        if self.recon:
+            data["recon"] = self.recon.to_dict()
+        return data
 
 
 class ScannerEngine:
     """
-    Core security assessment engine orchestrating HTTP client, detectors, and scan result compilation.
+    Core security assessment engine orchestrating target reconnaissance, HTTP client,
+    detectors, and scan result compilation.
     """
 
     def __init__(self, config: Config):
         self.config = config
         self.logger = StructuredLogger.get_logger(config=config.logging)
         self.http_client = HTTPClient(config.scanner)
+        self.recon_engine = ReconEngine(config.scanner, self.http_client)
         self.detectors: List[BaseDetector] = []
 
         # Register default detectors
         self._register_default_detectors()
 
     def _register_default_detectors(self):
-        # Register foundation detectors matching config
         if "security_headers" in self.config.enabled_detectors:
             self.register_detector(SecurityHeadersDetector())
 
@@ -54,6 +61,12 @@ class ScannerEngine:
         if not self.http_client.verify_target_reachable(url):
             self.logger.warning(f"Target URL {url} is not reachable or returned server error.")
 
+        # Phase 1: HTTP Target Reconnaissance
+        self.logger.info("Executing Phase 1: HTTP Target Reconnaissance...")
+        recon_result = self.recon_engine.run(url)
+
+        # Phase 2: Vulnerability Detectors Execution
+        self.logger.info("Executing Phase 2: Security Vulnerability Detectors...")
         all_findings: List[Finding] = []
         import time
         start_time = time.perf_counter()
@@ -76,7 +89,11 @@ class ScannerEngine:
             findings=all_findings,
             risk_score=risk_score,
             scan_duration_ms=scan_duration_ms,
+            recon=recon_result,
         )
 
-        self.logger.info(f"Scan complete. Total findings: {result.total_findings}, Risk score: {result.risk_score:.1f}")
+        self.logger.info(
+            f"Scan complete. Endpoints: {recon_result.total_endpoints}, Forms: {recon_result.total_forms}, "
+            f"Findings: {result.total_findings}, Risk score: {result.risk_score:.1f}"
+        )
         return result

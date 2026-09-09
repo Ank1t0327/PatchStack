@@ -30,17 +30,37 @@ def main():
         print(json.dumps(result.to_dict(), indent=2))
     else:
         print("\n" + "=" * 60)
-        print(f" 🛡️  PATCHSTACK SECURITY ASSESSMENT REPORT")
+        print(" 🛡️  PATCHSTACK SECURITY ASSESSMENT REPORT")
         print("=" * 60)
+        
+        # Reconnaissance Summary Banner
+        if result.recon:
+            r = result.recon
+            print(f"[+] Target: {r.target_url}\n")
+            print(f"[+] Endpoints discovered: {r.total_endpoints}")
+            print(f"[+] Forms discovered: {r.total_forms}")
+            print(f"[+] Cookies: {r.total_cookies}")
+            print(f"[+] Server: {r.fingerprint.server or 'Unknown'}")
+            if r.fingerprint.framework != "Unknown":
+                print(f"[+] Framework: {r.fingerprint.framework}")
+            if r.fingerprint.technologies:
+                print(f"[+] Technologies: {', '.join(r.fingerprint.technologies)}")
+            print("-" * 60)
+
         print(f" Target URL     : {result.target_url}")
         print(f" Total Findings : {result.total_findings}")
         print(f" Cumulative Risk: {result.risk_score:.1f}")
-        print(f" Duration       : {result.scan_duration_ms:.2f} ms")
+        print(f" Scan Duration  : {result.scan_duration_ms:.2f} ms")
         print("-" * 60)
-        for i, finding in enumerate(result.findings, 1):
-            print(f" [{i}] [{finding.severity.value}] {finding.title}")
-            print(f"     ID:          {finding.id}")
-            print(f"     Remediation: {finding.remediation}")
+        
+        if result.findings:
+            print(" VULNERABILITY FINDINGS:")
+            for i, finding in enumerate(result.findings, 1):
+                print(f" [{i}] [{finding.severity.value}] {finding.title}")
+                print(f"     ID:          {finding.id}")
+                print(f"     Remediation: {finding.remediation}")
+        else:
+            print(" No vulnerability findings reported.")
         print("=" * 60 + "\n")
 
 
