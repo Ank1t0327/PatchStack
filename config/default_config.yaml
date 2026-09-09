@@ -17,7 +17,9 @@ logging:
 detectors:
   enabled:
     - security_headers
+    - cookie_security
     - info_disclosure
+    - dangerous_methods
     - cors_misconfig
 
 reports:

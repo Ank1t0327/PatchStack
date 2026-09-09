@@ -32,7 +32,7 @@ def main():
         print("\n" + "=" * 60)
         print(" 🛡️  PATCHSTACK SECURITY ASSESSMENT REPORT")
         print("=" * 60)
-        
+
         # Reconnaissance Summary Banner
         if result.recon:
             r = result.recon
@@ -52,13 +52,16 @@ def main():
         print(f" Cumulative Risk: {result.risk_score:.1f}")
         print(f" Scan Duration  : {result.scan_duration_ms:.2f} ms")
         print("-" * 60)
-        
+
         if result.findings:
-            print(" VULNERABILITY FINDINGS:")
+            print("\n VULNERABILITY FINDINGS:\n")
             for i, finding in enumerate(result.findings, 1):
-                print(f" [{i}] [{finding.severity.value}] {finding.title}")
-                print(f"     ID:          {finding.id}")
-                print(f"     Remediation: {finding.remediation}")
+                print(f" Finding: {finding.title}")
+                print(f" Severity: {finding.severity.value.capitalize()}")
+                print(f" Endpoint: {finding.endpoint}")
+                print(f" Evidence: {finding.evidence}")
+                print(f" Recommendation: {finding.recommendation}")
+                print("-" * 40)
         else:
             print(" No vulnerability findings reported.")
         print("=" * 60 + "\n")

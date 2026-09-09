@@ -3,7 +3,12 @@ from typing import List, Dict, Any, Optional
 from patchstack.config import Config
 from patchstack.logger import StructuredLogger
 from patchstack.scanner.http_client import HTTPClient
-from patchstack.detectors.base import BaseDetector, Finding, SecurityHeadersDetector
+from patchstack.detectors.base import BaseDetector, Finding
+from patchstack.detectors.headers import SecurityHeadersDetector
+from patchstack.detectors.cookies import CookieSecurityDetector
+from patchstack.detectors.info_disclosure import ServerInfoDisclosureDetector
+from patchstack.detectors.methods import DangerousMethodsDetector
+from patchstack.detectors.cors import CORSConfigDetector
 from patchstack.recon.engine import ReconEngine
 from patchstack.recon.models import ReconResult
 
@@ -47,8 +52,17 @@ class ScannerEngine:
         self._register_default_detectors()
 
     def _register_default_detectors(self):
-        if "security_headers" in self.config.enabled_detectors:
-            self.register_detector(SecurityHeadersDetector())
+        detector_map = {
+            "security_headers": SecurityHeadersDetector,
+            "cookie_security": CookieSecurityDetector,
+            "info_disclosure": ServerInfoDisclosureDetector,
+            "dangerous_methods": DangerousMethodsDetector,
+            "cors_misconfig": CORSConfigDetector,
+        }
+
+        for name in self.config.enabled_detectors:
+            if name in detector_map:
+                self.register_detector(detector_map[name]())
 
     def register_detector(self, detector: BaseDetector):
         self.detectors.append(detector)
@@ -65,7 +79,7 @@ class ScannerEngine:
         self.logger.info("Executing Phase 1: HTTP Target Reconnaissance...")
         recon_result = self.recon_engine.run(url)
 
-        # Phase 2: Vulnerability Detectors Execution
+        # Phase 2: Security Vulnerability Detectors Execution
         self.logger.info("Executing Phase 2: Security Vulnerability Detectors...")
         all_findings: List[Finding] = []
         import time
