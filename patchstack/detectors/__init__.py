@@ -8,6 +8,7 @@ from patchstack.detectors.cookies import CookieSecurityDetector
 from patchstack.detectors.info_disclosure import ServerInfoDisclosureDetector
 from patchstack.detectors.methods import DangerousMethodsDetector
 from patchstack.detectors.cors import CORSConfigDetector
+from patchstack.detectors.auth import AuthSessionDetector
 
 __all__ = [
     "BaseDetector",
@@ -18,4 +19,5 @@ __all__ = [
     "ServerInfoDisclosureDetector",
     "DangerousMethodsDetector",
     "CORSConfigDetector",
+    "AuthSessionDetector",
 ]
