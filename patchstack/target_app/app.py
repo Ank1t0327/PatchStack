@@ -1,9 +1,13 @@
 from flask import Flask, jsonify, make_response, request, render_template_string, redirect, url_for
+from patchstack.target_app.auth import VulnerableAuthManager, SecureAuthManager
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.config["SECRET_KEY"] = "dev-vulnerable-key-patchstack-day3"
+    app.config["SECRET_KEY"] = "dev-vulnerable-key-patchstack-day4"
+
+    vulnerable_auth = VulnerableAuthManager()
+    secure_auth = SecureAuthManager()
 
     HOME_HTML = """
     <!url html>
@@ -37,8 +41,8 @@ def create_app() -> Flask:
     <html>
     <head><title>Login - PatchStack Target</title></head>
     <body>
-        <h2>Account Login</h2>
-        <form action="/login" method="POST">
+        <h2>Account Login (Vulnerable Demo)</h2>
+        <form action="/api/v1/auth/login-vulnerable" method="POST">
             <label>Username: <input type="text" name="username" required></label><br>
             <label>Password: <input type="password" name="password" required></label><br>
             <button type="submit">Login</button>
@@ -120,12 +124,8 @@ def create_app() -> Flask:
         resp.set_cookie("patchstack_visitor", "guest_session_v1", httponly=False)
         return _set_headers(resp)
 
-    @app.route("/login", methods=["GET", "POST"])
+    @app.route("/login", methods=["GET"])
     def login():
-        if request.method == "POST":
-            resp = make_response(redirect(url_for("profile")))
-            resp.set_cookie("session", "patchstack_auth_session_token_8899", httponly=True)
-            return _set_headers(resp)
         resp = make_response(render_template_string(LOGIN_HTML))
         return _set_headers(resp)
 
@@ -182,12 +182,41 @@ def create_app() -> Flask:
             resp.headers["Access-Control-Allow-Credentials"] = "true"
         return _set_headers(resp)
 
-    # --- Day 3 Test Harness Routes ---
+    # --- Day 4 Authentication Routes ---
+
+    @app.route("/api/v1/auth/login-vulnerable", methods=["POST"])
+    def login_vulnerable():
+        data = request.get_json(silent=True) or request.form
+        username = data.get("username", "")
+        password = data.get("password", "")
+
+        success, message, result, cookie_str = vulnerable_auth.login(username, password)
+        status_code = 200 if success else 401
+
+        resp = make_response(jsonify({"success": success, "message": message, "data": result}), status_code)
+        if cookie_str:
+            resp.headers["Set-Cookie"] = cookie_str
+        return _set_headers(resp)
+
+    @app.route("/api/v1/auth/login-secure", methods=["POST"])
+    def login_secure():
+        data = request.get_json(silent=True) or request.form
+        username = data.get("username", "")
+        password = data.get("password", "")
+
+        success, message, result, cookie_str = secure_auth.login(username, password)
+        status_code = 200 if success else (429 if "locked" in message.lower() else 401)
+
+        resp = make_response(jsonify({"success": success, "message": message, "data": result}), status_code)
+        if cookie_str:
+            resp.headers["Set-Cookie"] = cookie_str
+        return _set_headers(resp)
+
+    # --- Harness Test Routes ---
 
     @app.route("/api/v1/insecure-cookie", methods=["GET"])
     def insecure_cookie_test():
         resp = make_response(jsonify({"status": "cookie_set"}))
-        # Intentionally insecure cookie: no HttpOnly, no Secure, no SameSite
         resp.set_cookie("auth_token", "secret12345", httponly=False, secure=False)
         return _set_headers(resp)
 
