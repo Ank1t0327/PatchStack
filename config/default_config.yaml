@@ -21,6 +21,7 @@ detectors:
     - info_disclosure
     - dangerous_methods
     - cors_misconfig
+    - auth_session
 
 reports:
   output_dir: "reports/output"

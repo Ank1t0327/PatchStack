@@ -9,6 +9,7 @@ from patchstack.detectors.cookies import CookieSecurityDetector
 from patchstack.detectors.info_disclosure import ServerInfoDisclosureDetector
 from patchstack.detectors.methods import DangerousMethodsDetector
 from patchstack.detectors.cors import CORSConfigDetector
+from patchstack.detectors.auth import AuthSessionDetector
 from patchstack.recon.engine import ReconEngine
 from patchstack.recon.models import ReconResult
 
@@ -58,6 +59,7 @@ class ScannerEngine:
             "info_disclosure": ServerInfoDisclosureDetector,
             "dangerous_methods": DangerousMethodsDetector,
             "cors_misconfig": CORSConfigDetector,
+            "auth_session": AuthSessionDetector,
         }
 
         for name in self.config.enabled_detectors:
