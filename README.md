@@ -21,12 +21,12 @@
                                     │
                               HTTP Analysis
                                     │
-                  Security Vulnerability Detectors (Day 3)
-         (Headers, Cookies, Info Disclosure, Methods, CORS)
+                  Security Vulnerability Detectors (Day 3 & 4)
+   (Headers, Cookies, Info Leak, Methods, CORS, Auth & Session)
                                     │
                          Vulnerability Findings
                                     │
-                              Risk Scoring
+               Vulnerable → Detect → Explain → Fix → Retest
                                     │
                             Security Report
 ```
@@ -36,10 +36,11 @@ patchstack/
 ├── config/                  # Default YAML configs & env loader
 │   └── default_config.yaml
 ├── patchstack/
-│   ├── cli.py               # CLI Entry Point & Report Visualizer
+│   ├── cli.py               # CLI Entry Point & Comparative Retest Visualizer
 │   ├── config.py            # ConfigManager & Dataclasses
 │   ├── logger.py            # Structured Logger with Console/File handlers
-│   ├── detectors/           # Security Detectors Framework (Day 3)
+│   ├── detectors/           # Security Detectors Framework
+│   │   ├── auth.py          # AuthSessionDetector (Day 4: Enum, Session Entropy, Lockout, Cookies)
 │   │   ├── base.py          # BaseDetector interface & Finding models
 │   │   ├── cookies.py       # CookieSecurityDetector (HttpOnly, Secure, SameSite)
 │   │   ├── cors.py          # CORSConfigDetector (Origin reflection & credentials)
@@ -59,6 +60,7 @@ patchstack/
 │   │   └── http_client.py   # Telemetry-enabled HTTP client wrapper
 │   └── target_app/          # Controlled Intentionally Vulnerable Web App
 │       ├── app.py           # Flask app factory with enriched HTML routes & test harnesses
+│       ├── auth.py          # Dual Auth System: VulnerableAuthManager vs SecureAuthManager
 │       └── __main__.py      # Independent launcher
 ├── tests/                   # Pytest automated test suite
 ├── setup.py                 # Package setup file
@@ -68,13 +70,12 @@ patchstack/
 
 ---
 
-## ✨ Security Detectors (Day 3)
+## ✨ Authentication & Session Security (Day 4)
 
-- **Security Headers Auditor**: Detects missing `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Strict-Transport-Security` (HSTS), `Referrer-Policy`, and `Permissions-Policy`.
-- **Cookie Security Auditor**: Analyzes `Set-Cookie` headers for missing `HttpOnly`, missing `Secure`, and weak/missing `SameSite` flags.
-- **Server Information Disclosure**: Identifies version leakage in `Server`, `X-Powered-By`, `X-AspNet-Version`, and runtime headers.
-- **Dangerous HTTP Methods**: Checks for enabled `TRACE` (Cross-Site Tracing), `PUT`, `DELETE`, and `OPTIONS` method exposures.
-- **CORS Misconfiguration Auditor**: Tests for arbitrary Origin reflection and wildcard origin permissions paired with `Access-Control-Allow-Credentials: true`.
+PatchStack features a dual-mode authentication harness for live comparative security auditing:
+- **Vulnerable Auth (`/api/v1/auth/login-vulnerable`)**: Demonstrates username enumeration (`"User not found"` vs `"Incorrect password"`), predictable sequential session tokens (`SESSION-1001`), missing account lockout/rate-limiting, and weak session cookies.
+- **Secure Remediation (`/api/v1/auth/login-secure`)**: Implements generic error messages (`"Invalid credentials"`), high-entropy random tokens (`secrets.token_urlsafe(32)`), 15-minute account lockout after 5 failed attempts, and `HttpOnly; Secure; SameSite=Strict` cookies.
+- **Vulnerable → Detect → Explain → Fix → Retest Workflow**: Run `python -m patchstack.cli --demo-auth` to execute an automated side-by-side comparative retest.
 
 ---
 
@@ -100,23 +101,12 @@ Launch the controlled vulnerable web server in a separate terminal:
 python -m patchstack.target_app --port 5000
 ```
 
-### 3. Run the Security Scanner & Audit Suite
+### 3. Run the Authentication & Session Security Demo
 
-Execute the scanner CLI against the target application:
+Execute the CLI demo workflow comparing vulnerable vs secure auth implementations:
 
 ```bash
-# Basic scan & security assessment against target
-python -m patchstack.cli --target http://127.0.0.1:5000
-
-# Sample CLI Output:
-# Finding: Missing Content-Security-Policy
-# Severity: Medium
-# Endpoint: http://127.0.0.1:5000
-# Evidence: Header not present
-# Recommendation: Configure an appropriate Content-Security-Policy header (e.g., default-src 'self').
-
-# JSON report export
-python -m patchstack.cli --target http://127.0.0.1:5000 --json
+python -m patchstack.cli --target http://127.0.0.1:5000 --demo-auth
 ```
 
 ---
@@ -136,7 +126,7 @@ pytest -v
 - [x] **Day 1**: Repository foundation, architecture design, target application skeleton, scanner core, logging & config system.
 - [x] **Day 2**: HTTP Reconnaissance engine (web crawler, form parser, cookie tracking, technology stack fingerprinter).
 - [x] **Day 3**: Security headers, cookie security, server info disclosure, dangerous methods, and CORS detectors.
-- [ ] **Day 4**: Authentication & session security analysis.
+- [x] **Day 4**: Authentication & session security analysis (Vulnerable vs Secure Auth, Username Enum, Token Predictability, Rate Limiting, Cookie Flags, Comparative Retest).
 - [ ] **Day 5**: Input validation & injection vulnerability checks (SQLi / XSS heuristics).
 - [ ] **Day 6**: Access control & IDOR detection modules.
 - [ ] **Day 7**: API security audit module (REST/JSON endpoints).
