@@ -9,6 +9,9 @@ from patchstack.detectors.info_disclosure import ServerInfoDisclosureDetector
 from patchstack.detectors.methods import DangerousMethodsDetector
 from patchstack.detectors.cors import CORSConfigDetector
 from patchstack.detectors.auth import AuthSessionDetector
+from patchstack.detectors.sqli import SQLInjectionDetector
+from patchstack.detectors.xss import XSSDetector
+from patchstack.detectors.idor import IDORAccessControlDetector
 
 __all__ = [
     "BaseDetector",
@@ -20,4 +23,7 @@ __all__ = [
     "DangerousMethodsDetector",
     "CORSConfigDetector",
     "AuthSessionDetector",
+    "SQLInjectionDetector",
+    "XSSDetector",
+    "IDORAccessControlDetector",
 ]
