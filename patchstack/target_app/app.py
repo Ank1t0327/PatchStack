@@ -1,13 +1,16 @@
+import html
 from flask import Flask, jsonify, make_response, request, render_template_string, redirect, url_for
 from patchstack.target_app.auth import VulnerableAuthManager, SecureAuthManager
+from patchstack.target_app.db import DatabaseManager
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.config["SECRET_KEY"] = "dev-vulnerable-key-patchstack-day4"
+    app.config["SECRET_KEY"] = "dev-vulnerable-key-patchstack-day567"
 
     vulnerable_auth = VulnerableAuthManager()
     secure_auth = SecureAuthManager()
+    db = DatabaseManager()
 
     HOME_HTML = """
     <!url html>
@@ -27,11 +30,11 @@ def create_app() -> Flask:
             <a href="/admin">Admin Panel</a> |
             <a href="/api/v1/info">API Info</a> |
             <a href="/api/v1/users">API Users</a> |
-            <a href="/api/v1/insecure-cookie">Insecure Cookie Test</a> |
-            <a href="/api/v1/info-leak">Info Leak Test</a> |
-            <a href="/api/v1/cors-vulnerable">CORS Vulnerable Test</a>
+            <a href="/api/v1/sqli/user-vulnerable?id=101">SQLi User Test</a> |
+            <a href="/api/v1/xss/search-vulnerable?q=security">XSS Search Test</a> |
+            <a href="/api/user/102">IDOR Test</a>
         </nav>
-        <p>Welcome to the controlled web application testbed for PatchStack reconnaissance & vulnerability assessment.</p>
+        <p>Welcome to the controlled web application testbed for PatchStack security assessment.</p>
     </body>
     </html>
     """
@@ -41,7 +44,7 @@ def create_app() -> Flask:
     <html>
     <head><title>Login - PatchStack Target</title></head>
     <body>
-        <h2>Account Login (Vulnerable Demo)</h2>
+        <h2>Account Login</h2>
         <form action="/api/v1/auth/login-vulnerable" method="POST">
             <label>Username: <input type="text" name="username" required></label><br>
             <label>Password: <input type="password" name="password" required></label><br>
@@ -182,7 +185,7 @@ def create_app() -> Flask:
             resp.headers["Access-Control-Allow-Credentials"] = "true"
         return _set_headers(resp)
 
-    # --- Day 4 Authentication Routes ---
+    # --- Day 4 Auth Routes ---
 
     @app.route("/api/v1/auth/login-vulnerable", methods=["POST"])
     def login_vulnerable():
@@ -211,6 +214,70 @@ def create_app() -> Flask:
         if cookie_str:
             resp.headers["Set-Cookie"] = cookie_str
         return _set_headers(resp)
+
+    # --- Day 5: SQL Injection Routes ---
+
+    @app.route("/api/v1/sqli/user-vulnerable", methods=["GET"])
+    def sqli_user_vulnerable():
+        user_id = request.args.get("id", "101")
+        success, rows, err = db.get_user_by_id_vulnerable(user_id)
+        if not success:
+            return _set_headers(make_response(f"sqlite3.OperationalError: {err}", 500))
+        if not rows:
+            return _set_headers(make_response(jsonify({"error": "User not found"}), 404))
+        return _set_headers(make_response(jsonify(rows), 200))
+
+    @app.route("/api/v1/sqli/user-secure", methods=["GET"])
+    def sqli_user_secure():
+        user_id = request.args.get("id", "101")
+        success, rows, err = db.get_user_by_id_secure(user_id)
+        if not success:
+            return _set_headers(make_response(jsonify({"error": "Database error"}), 500))
+        if not rows:
+            return _set_headers(make_response(jsonify({"error": "User not found"}), 404))
+        return _set_headers(make_response(jsonify(rows), 200))
+
+    # --- Day 6: XSS Routes ---
+
+    @app.route("/api/v1/xss/search-vulnerable", methods=["GET"])
+    def xss_search_vulnerable():
+        q = request.args.get("q", "")
+        # Unescaped reflected HTML
+        html_out = f"<html><body><h2>Search Results for: {q}</h2></body></html>"
+        return _set_headers(make_response(html_out, 200))
+
+    @app.route("/api/v1/xss/search-secure", methods=["GET"])
+    def xss_search_secure():
+        q = request.args.get("q", "")
+        # Context-aware HTML entity encoding
+        safe_q = html.escape(q)
+        html_out = f"<html><body><h2>Search Results for: {safe_q}</h2></body></html>"
+        return _set_headers(make_response(html_out, 200))
+
+    # --- Day 7: IDOR Routes ---
+
+    @app.route("/api/v1/idor/user-vulnerable/<int:user_id>", methods=["GET"])
+    @app.route("/api/user/<int:user_id>", methods=["GET"])
+    def idor_user_vulnerable(user_id):
+        # Vulnerable IDOR: Returns user object without checking session ownership
+        success, rows, _ = db.get_user_by_id_secure(str(user_id))
+        if not rows:
+            return _set_headers(make_response(jsonify({"error": "User not found"}), 404))
+        return _set_headers(make_response(jsonify(rows[0]), 200))
+
+    @app.route("/api/v1/idor/user-secure/<int:user_id>", methods=["GET"])
+    @app.route("/api/user-secure/<int:user_id>", methods=["GET"])
+    def idor_user_secure(user_id):
+        # Secure IDOR fix: Verify session cookie matches requested user_id
+        cookie = request.headers.get("Cookie", "")
+        # Extract authenticated user_id from session cookie token
+        session_user_id = 101 if "user101" in cookie or "SESSION-USER-101" in cookie or "101" in cookie else None
+
+        if not session_user_id or session_user_id != user_id:
+            return _set_headers(make_response(jsonify({"error": "Forbidden: You are not authorized to access this resource"}), 403))
+
+        success, rows, _ = db.get_user_by_id_secure(str(user_id))
+        return _set_headers(make_response(jsonify(rows[0]), 200))
 
     # --- Harness Test Routes ---
 
