@@ -10,6 +10,9 @@ from patchstack.detectors.info_disclosure import ServerInfoDisclosureDetector
 from patchstack.detectors.methods import DangerousMethodsDetector
 from patchstack.detectors.cors import CORSConfigDetector
 from patchstack.detectors.auth import AuthSessionDetector
+from patchstack.detectors.sqli import SQLInjectionDetector
+from patchstack.detectors.xss import XSSDetector
+from patchstack.detectors.idor import IDORAccessControlDetector
 from patchstack.recon.engine import ReconEngine
 from patchstack.recon.models import ReconResult
 
@@ -60,6 +63,9 @@ class ScannerEngine:
             "dangerous_methods": DangerousMethodsDetector,
             "cors_misconfig": CORSConfigDetector,
             "auth_session": AuthSessionDetector,
+            "sqli_detector": SQLInjectionDetector,
+            "xss_detector": XSSDetector,
+            "idor_detector": IDORAccessControlDetector,
         }
 
         for name in self.config.enabled_detectors:

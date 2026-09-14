@@ -22,6 +22,9 @@ detectors:
     - dangerous_methods
     - cors_misconfig
     - auth_session
+    - sqli_detector
+    - xss_detector
+    - idor_detector
 
 reports:
   output_dir: "reports/output"
