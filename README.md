@@ -21,8 +21,8 @@
                                     │
                               HTTP Analysis
                                     │
-                  Security Vulnerability Detectors (Day 3 & 4)
-   (Headers, Cookies, Info Leak, Methods, CORS, Auth & Session)
+                  Security Vulnerability Detectors (Days 3-7)
+    (Headers, Cookies, Info, Methods, CORS, Auth, SQLi, XSS, IDOR)
                                     │
                          Vulnerability Findings
                                     │
@@ -45,8 +45,11 @@ patchstack/
 │   │   ├── cookies.py       # CookieSecurityDetector (HttpOnly, Secure, SameSite)
 │   │   ├── cors.py          # CORSConfigDetector (Origin reflection & credentials)
 │   │   ├── headers.py       # SecurityHeadersDetector (CSP, HSTS, X-Frame-Options)
+│   │   ├── idor.py          # IDORAccessControlDetector (Day 7: Cross-user object authorization)
 │   │   ├── info_disclosure.py # ServerInfoDisclosureDetector (Version leakage)
-│   │   └── methods.py       # DangerousMethodsDetector (TRACE, OPTIONS, PUT, DELETE)
+│   │   ├── methods.py       # DangerousMethodsDetector (TRACE, OPTIONS, PUT, DELETE)
+│   │   ├── sqli.py          # SQLInjectionDetector (Day 5: Error-based & Boolean differential)
+│   │   └── xss.py           # XSSDetector (Day 6: Canary reflection & context encoding)
 │   ├── recon/               # HTTP Reconnaissance Engine (Day 2)
 │   │   ├── crawler.py       # Domain-scoped recursive WebCrawler
 │   │   ├── engine.py        # ReconEngine orchestrator
@@ -61,6 +64,7 @@ patchstack/
 │   └── target_app/          # Controlled Intentionally Vulnerable Web App
 │       ├── app.py           # Flask app factory with enriched HTML routes & test harnesses
 │       ├── auth.py          # Dual Auth System: VulnerableAuthManager vs SecureAuthManager
+│       ├── db.py            # In-Memory SQLite Manager (Vulnerable vs Parameterized SQL)
 │       └── __main__.py      # Independent launcher
 ├── tests/                   # Pytest automated test suite
 ├── setup.py                 # Package setup file
@@ -70,12 +74,23 @@ patchstack/
 
 ---
 
-## ✨ Authentication & Session Security (Day 4)
+## ✨ Vulnerability Detection Suite (Days 5, 6 & 7)
 
-PatchStack features a dual-mode authentication harness for live comparative security auditing:
-- **Vulnerable Auth (`/api/v1/auth/login-vulnerable`)**: Demonstrates username enumeration (`"User not found"` vs `"Incorrect password"`), predictable sequential session tokens (`SESSION-1001`), missing account lockout/rate-limiting, and weak session cookies.
-- **Secure Remediation (`/api/v1/auth/login-secure`)**: Implements generic error messages (`"Invalid credentials"`), high-entropy random tokens (`secrets.token_urlsafe(32)`), 15-minute account lockout after 5 failed attempts, and `HttpOnly; Secure; SameSite=Strict` cookies.
-- **Vulnerable → Detect → Explain → Fix → Retest Workflow**: Run `python -m patchstack.cli --demo-auth` to execute an automated side-by-side comparative retest.
+### Day 5 — SQL Injection Detection (`sqli_detector`)
+- Detects Error-Based and Boolean-Based SQL Injection anomalies.
+- Parameterized query fixes implemented in `target_app/db.py`.
+- **Demo Command**: `python -m patchstack.cli --demo-sqli`
+
+### Day 6 — XSS + Input Validation (`xss_detector`)
+- Canary reflection discovery and context analysis (HTML/Attribute/Script).
+- Detects Reflected & Stored XSS and missing HTML output encoding.
+- Explains why context-aware encoding (`html.escape()`) is mandatory.
+- **Demo Command**: `python -m patchstack.cli --demo-xss`
+
+### Day 7 — IDOR + Access Control (`idor_detector`)
+- Tests cross-account object access (e.g. User 101 attempting to fetch User 102 resource `/api/user/102`).
+- Identifies Horizontal Privilege Escalation and Missing Authorization.
+- **Demo Command**: `python -m patchstack.cli --demo-idor`
 
 ---
 
@@ -101,12 +116,20 @@ Launch the controlled vulnerable web server in a separate terminal:
 python -m patchstack.target_app --port 5000
 ```
 
-### 3. Run the Authentication & Session Security Demo
-
-Execute the CLI demo workflow comparing vulnerable vs secure auth implementations:
+### 3. Run Vulnerability Audit Demos
 
 ```bash
-python -m patchstack.cli --target http://127.0.0.1:5000 --demo-auth
+# SQL Injection Lifecycle Demo
+python -m patchstack.cli --demo-sqli
+
+# XSS & Input Encoding Demo
+python -m patchstack.cli --demo-xss
+
+# IDOR & Authorization Audit Demo
+python -m patchstack.cli --demo-idor
+
+# Full Security Audit against target
+python -m patchstack.cli --target http://127.0.0.1:5000
 ```
 
 ---
@@ -127,9 +150,9 @@ pytest -v
 - [x] **Day 2**: HTTP Reconnaissance engine (web crawler, form parser, cookie tracking, technology stack fingerprinter).
 - [x] **Day 3**: Security headers, cookie security, server info disclosure, dangerous methods, and CORS detectors.
 - [x] **Day 4**: Authentication & session security analysis (Vulnerable vs Secure Auth, Username Enum, Token Predictability, Rate Limiting, Cookie Flags, Comparative Retest).
-- [ ] **Day 5**: Input validation & injection vulnerability checks (SQLi / XSS heuristics).
-- [ ] **Day 6**: Access control & IDOR detection modules.
-- [ ] **Day 7**: API security audit module (REST/JSON endpoints).
+- [x] **Day 5**: SQL Injection detection (Error-based, Boolean-based, Parameterized query fixes).
+- [x] **Day 6**: XSS & Input Validation (Canary reflection, Context analysis, HTML entity encoding).
+- [x] **Day 7**: IDOR & Access Control Audit (Horizontal Privilege Escalation, Session Ownership Checks).
 - [ ] **Day 8**: Proof-of-concept verification engine & false positive filtering.
 - [ ] **Day 9**: Professional HTML & Executive PDF Report Exporter.
 - [ ] **Day 10**: Benchmarking, documentation polish, and release engineering.
