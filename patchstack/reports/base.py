@@ -1,7 +1,7 @@
 import json
 import os
 from abc import ABC, abstractmethod
-from patchstack.scanner.engine import ScanResult
+from typing import Any
 
 
 class BaseReportExporter(ABC):
@@ -10,7 +10,7 @@ class BaseReportExporter(ABC):
     """
 
     @abstractmethod
-    def export(self, scan_result: ScanResult, output_path: str) -> str:
+    def export(self, scan_result: Any, output_path: str) -> str:
         pass
 
 
