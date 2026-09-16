@@ -15,6 +15,9 @@ from patchstack.detectors.xss import XSSDetector
 from patchstack.detectors.idor import IDORAccessControlDetector
 from patchstack.recon.engine import ReconEngine
 from patchstack.recon.models import ReconResult
+from patchstack.risk.engine import RiskEngine
+from patchstack.reports.html_report import HTMLReportExporter
+from patchstack.storage.db import ScanDatabaseManager
 
 
 @dataclass
@@ -30,7 +33,7 @@ class ScanResult:
         data = {
             "target_url": self.target_url,
             "total_findings": self.total_findings,
-            "risk_score": round(self.risk_score, 2),
+            "risk_score": round(self.risk_score, 1),
             "scan_duration_ms": round(self.scan_duration_ms, 2),
             "findings": [f.to_dict() for f in self.findings],
         }
@@ -41,8 +44,8 @@ class ScanResult:
 
 class ScannerEngine:
     """
-    Core security assessment engine orchestrating target reconnaissance, HTTP client,
-    detectors, and scan result compilation.
+    Core security assessment engine orchestrating:
+    Recon -> Discovery -> Detectors -> Risk Engine -> Database -> HTML Report Exporter
     """
 
     def __init__(self, config: Config):
@@ -50,6 +53,7 @@ class ScannerEngine:
         self.logger = StructuredLogger.get_logger(config=config.logging)
         self.http_client = HTTPClient(config.scanner)
         self.recon_engine = ReconEngine(config.scanner, self.http_client)
+        self.db_manager = ScanDatabaseManager()
         self.detectors: List[BaseDetector] = []
 
         # Register default detectors
@@ -83,13 +87,13 @@ class ScannerEngine:
         if not self.http_client.verify_target_reachable(url):
             self.logger.warning(f"Target URL {url} is not reachable or returned server error.")
 
-        # Phase 1: HTTP Target Reconnaissance
-        self.logger.info("Executing Phase 1: HTTP Target Reconnaissance...")
+        # Phase 1: Reconnaissance & Discovery
+        self.logger.info("Phase 1: Executing HTTP Target Reconnaissance & Discovery...")
         recon_result = self.recon_engine.run(url)
 
-        # Phase 2: Security Vulnerability Detectors Execution
-        self.logger.info("Executing Phase 2: Security Vulnerability Detectors...")
-        all_findings: List[Finding] = []
+        # Phase 2: Vulnerability Detectors Execution
+        self.logger.info("Phase 2: Running Security Vulnerability Detectors...")
+        raw_findings: List[Finding] = []
         import time
         start_time = time.perf_counter()
 
@@ -97,25 +101,42 @@ class ScannerEngine:
             self.logger.info(f"Running detector module: {detector.name}")
             try:
                 findings = detector.scan(self.http_client, url)
-                all_findings.extend(findings)
-                self.logger.info(f"Detector {detector.name} produced {len(findings)} finding(s)")
+                raw_findings.extend(findings)
             except Exception as e:
                 self.logger.error(f"Error running detector {detector.name}: {e}")
 
+        # Phase 3: Risk Engine Processing (Deduplication, Mappings & 0-10 Risk Score Calculation)
+        self.logger.info("Phase 3: Processing Risk Engine (Deduplication, CWE/OWASP Mappings, Risk Scoring)...")
+        deduped_findings = RiskEngine.enrich_and_deduplicate(raw_findings)
+        risk_score = RiskEngine.calculate_risk_score(deduped_findings)
         scan_duration_ms = (time.perf_counter() - start_time) * 1000.0
-        risk_score = sum(f.cvss_score for f in all_findings)
 
         result = ScanResult(
             target_url=url,
-            total_findings=len(all_findings),
-            findings=all_findings,
+            total_findings=len(deduped_findings),
+            findings=deduped_findings,
             risk_score=risk_score,
             scan_duration_ms=scan_duration_ms,
             recon=recon_result,
         )
 
+        # Phase 4: Database Storage
+        self.logger.info("Phase 4: Persisting Scan Results to SQLite Database (patchstack.db)...")
+        try:
+            self.db_manager.save_scan_result(result)
+        except Exception as e:
+            self.logger.error(f"Error saving scan result to database: {e}")
+
+        # Phase 5: Export Standalone HTML Security Report
+        self.logger.info("Phase 5: Generating Executive HTML Security Assessment Report...")
+        try:
+            html_exporter = HTMLReportExporter()
+            html_exporter.export(result, "reports/output/patchstack_report.html")
+        except Exception as e:
+            self.logger.error(f"Error generating HTML report: {e}")
+
         self.logger.info(
-            f"Scan complete. Endpoints: {recon_result.total_endpoints}, Forms: {recon_result.total_forms}, "
-            f"Findings: {result.total_findings}, Risk score: {result.risk_score:.1f}"
+            f"Full Audit Complete. Endpoints: {recon_result.total_endpoints}, "
+            f"Findings: {result.total_findings}, Risk Score: {result.risk_score}/10"
         )
         return result

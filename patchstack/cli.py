@@ -8,6 +8,7 @@ from patchstack.detectors.auth import AuthSessionDetector
 from patchstack.detectors.sqli import SQLInjectionDetector
 from patchstack.detectors.xss import XSSDetector
 from patchstack.detectors.idor import IDORAccessControlDetector
+from patchstack.risk.engine import RiskEngine
 
 
 def main():
@@ -16,6 +17,7 @@ def main():
     parser.add_argument("-c", "--config", type=str, help="Path to custom YAML configuration file")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debug logging")
     parser.add_argument("--json", action="store_true", help="Output scan results as raw JSON")
+    parser.add_argument("--audit", action="store_true", help="Execute complete single-command security assessment pipeline")
     parser.add_argument("--demo-auth", action="store_true", help="Execute Auth Vulnerable -> Retest Demo")
     parser.add_argument("--demo-sqli", action="store_true", help="Execute SQLi Vulnerable -> Fix -> Retest Demo")
     parser.add_argument("--demo-xss", action="store_true", help="Execute XSS Vulnerable -> Fix -> Retest Demo")
@@ -137,41 +139,40 @@ def main():
     if args.json:
         print(json.dumps(result.to_dict(), indent=2))
     else:
+        counts = RiskEngine.calculate_severity_counts(result.findings)
+
         print("\n" + "=" * 60)
-        print(" 🛡️  PATCHSTACK SECURITY ASSESSMENT REPORT")
+        print(" PATCHSTACK SECURITY REPORT")
+        print("=" * 60)
+        print(f" Target: {result.target_url}\n")
+        print(f" Critical   {counts['Critical']}")
+        print(f" High       {counts['High']}")
+        print(f" Medium     {counts['Medium']}")
+        print(f" Low        {counts['Low']}\n")
+        print(f" Risk Score: {result.risk_score}/10")
         print("=" * 60)
 
-        if result.recon:
-            r = result.recon
-            print(f"[+] Target: {r.target_url}\n")
-            print(f"[+] Endpoints discovered: {r.total_endpoints}")
-            print(f"[+] Forms discovered: {r.total_forms}")
-            print(f"[+] Cookies: {r.total_cookies}")
-            print(f"[+] Server: {r.fingerprint.server or 'Unknown'}")
-            if r.fingerprint.framework != "Unknown":
-                print(f"[+] Framework: {r.fingerprint.framework}")
-            if r.fingerprint.technologies:
-                print(f"[+] Technologies: {', '.join(r.fingerprint.technologies)}")
-            print("-" * 60)
-
-        print(f" Target URL     : {result.target_url}")
-        print(f" Total Findings : {result.total_findings}")
-        print(f" Cumulative Risk: {result.risk_score:.1f}")
-        print(f" Scan Duration  : {result.scan_duration_ms:.2f} ms")
-        print("-" * 60)
+        # Terminal Dashboard Card Output
+        print("\n┌─────────────────────────────────┐")
+        print("│ PATCHSTACK                      │")
+        print("├─────────────────────────────────┤")
+        print(f"│ Risk Score             {result.risk_score:<6}/10   │")
+        print("│                                 │")
+        print(f"│ Critical      {counts['Critical']:<17} │")
+        print(f"│ High          {counts['High']:<17} │")
+        print(f"│ Medium        {counts['Medium']:<17} │")
+        print(f"│ Low           {counts['Low']:<17} │")
+        print("├─────────────────────────────────┤")
+        print("│ Vulnerabilities                 │")
+        print("│                                 │")
 
         if result.findings:
-            print("\n VULNERABILITY FINDINGS:\n")
-            for i, finding in enumerate(result.findings, 1):
-                print(f" Finding: {finding.title}")
-                print(f" Severity: {finding.severity.value.capitalize()}")
-                print(f" Endpoint: {finding.endpoint}")
-                print(f" Evidence: {finding.evidence}")
-                print(f" Recommendation: {finding.recommendation}")
-                print("-" * 40)
+            for f in result.findings[:6]:  # Top findings
+                title_short = f.title.split(":")[0][:16]
+                print(f"│ {title_short:<18} {f.severity.value:<9} │")
         else:
-            print(" No vulnerability findings reported.")
-        print("=" * 60 + "\n")
+            print("│ No vulnerabilities reported     │")
+        print("└─────────────────────────────────┘\n")
 
 
 if __name__ == "__main__":
