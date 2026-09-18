@@ -40,6 +40,9 @@ htmlcov/
 reports/output/
 scan_output/
 
+# Database files
+*.db
+
 # IDE & OS
 .vscode/
 .idea/
